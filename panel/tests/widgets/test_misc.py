@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from io import StringIO
 from pathlib import Path
@@ -155,3 +156,31 @@ def test_file_path_download():
     file_download._clicks += 1
     assert file_download.data
     assert file_download._transfers == 1
+
+
+@pytest.mark.parametrize('embed', [False, True])
+def test_file_download_pathlike(tmp_path, embed):
+    (tmp_path / 'report.txt').write_text('data', encoding='utf-8')
+    with os.scandir(tmp_path) as entries:
+        entry = next(entries)
+
+    file_download = FileDownload(entry, embed=embed)
+
+    assert file_download.filename == 'report.txt'
+    assert file_download.label == 'Download report.txt'
+    if not embed:
+        file_download._clicks += 1
+    assert file_download.data == 'data:text/plain;charset=UTF-8;base64,ZGF0YQ=='
+    assert file_download._transfers == 1
+
+
+def test_file_download_pathlike_callback(tmp_path):
+    (tmp_path / 'report.txt').write_text('data', encoding='utf-8')
+    with os.scandir(tmp_path) as entries:
+        entry = next(entries)
+
+    file_download = FileDownload(callback=lambda: entry, filename='download.txt')
+    file_download._clicks += 1
+
+    assert file_download.filename == 'download.txt'
+    assert file_download.data == 'data:text/plain;charset=UTF-8;base64,ZGF0YQ=='
